@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTrash, faEdit, faSave } from "@fortawesome/free-solid-svg-icons";
+
 function Todo() {
-  const [addtodo, setaddtodo] = useState();
-  const [progress, setprogress] = useState();
-  const [from, setfrom] = useState();
-  const [to, setto] = useState();
-  const [Id, setId] = useState();
+  const [addtodo, setaddtodo] = useState("");
+  const [progress, setprogress] = useState([]);
+  const [from, setfrom] = useState("");
+  const [to, setto] = useState("");
+  const [Id, setId] = useState("");
+  const [editText, setEditText] = useState("");
 
   async function addtoTodo(e) {
     e.preventDefault();
@@ -16,6 +20,7 @@ function Todo() {
       );
       if (response.status === 200) {
         getlist();
+        setaddtodo("");
       }
     } catch (err) {
       console.log(err);
@@ -54,8 +59,8 @@ function Todo() {
         );
         if (response.status === 200) {
           getlist();
-          setId(undefined);
-          setto(undefined);
+          setId("");
+          setto("");
         }
       } catch (err) {
         console.log(err);
@@ -64,7 +69,7 @@ function Todo() {
   }
 
   async function updateStrike(e, id) {
-    let check = e.target.checked;
+    const check = e.target.checked;
     try {
       const response = await axios.patch(
         `http://localhost:4000/api/server/update/${id}/${check}`
@@ -77,6 +82,32 @@ function Todo() {
     }
   }
 
+  const editItem = (id, text) => {
+    setId(id);
+    setEditText(text);
+  };
+
+  async function saveEditedItem() {
+    if (editText) {
+      try {
+        const response = await axios.patch(
+          `http://localhost:4000/api/server/addtodo/${Id}/${editText}`
+        );
+        if (response.status === 200) {
+          getlist();
+          setId("");
+          setEditText("");
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  }
+
+  const handleEditChange = (e) => {
+    setEditText(e.target.value);
+  };
+
   useEffect(() => {
     getlist();
   }, []);
@@ -85,222 +116,102 @@ function Todo() {
     e.dataTransfer.setData("todoId", id);
   };
 
-  const dragginover = (e) => {
+  const dragover = (e) => {
     e.preventDefault();
   };
 
   const dragdropped = (e) => {
     setId(e.dataTransfer.getData("todoId"));
   };
-  useEffect(() => {
-    if (Id && to) {
-      updateItem();
-    }
-    // eslint-disable-next-line
-  }, [Id, to]);
 
   return (
-    <>
-      <div className="flex flex-col">
-        <div className="flex justify-center text-5xl py-8">
-          <h1>TODO LIST</h1>
-        </div>
-        <div className="flex justify-center items-center">
+    <div className="bg-gray-900 text-gray-200 min-h-screen p-4">
+      <div className="max-w-screen-xl mx-auto">
+        <h1 className="text-4xl font-semibold text-center py-8">CRUD APP</h1>
+
+        <div className="bg-gray-800 rounded-lg shadow-md p-4">
           <form
             onSubmit={(e) => addtoTodo(e)}
-            className="py-6 my-4 border-black border-2 px-6 flex gap-4 "
+            className="flex items-center space-x-4"
           >
-            <label htmlFor="todo">Add Task</label>
             <input
-              className="border-black border-2 px-2"
-              onChange={(e) => setaddtodo(e.target.value)}
               type="text"
-              name="todo"
-              id="todo"
+              className="flex-1 p-2 rounded border border-gray-400 text-gray-800 focus:outline-none focus:border-blue-500"
+              placeholder="Add a new task"
+              value={addtodo}
+              onChange={(e) => setaddtodo(e.target.value)}
             />
-            <div className="cursor-pointer">
-            <input type="submit"></input></div>
+            <button
+              type="submit"
+              className="px-4 py-2 text-gray-200 bg-gray-600 rounded hover:bg-gray-700 transition duration-300"
+            >
+              Add
+            </button>
           </form>
-        </div>
-        <div className="flex gap-8 py-14 mx-4">
-          <div
-            className="h-auto flex-1 border border-black"
-            data-droppable
-            onDragOver={(e) => dragginover(e)}
-            onDrop={(e) => {
-              setto("todo");
-              dragdropped(e);
-            }}
-          >
-            <h1 className="text-3xl flex justify-center pt-3">Todo</h1>
-            <div className="h-auto w-full flex flex-col gap-4 px-4 py-6">
-              {progress
-                ? progress.map((item, index) => {
-                    if (item.progress === "todo") {
-                      return (
-                        <div
-                          data-attri="todo"
-                          style={
-                            item.check
-                              ? { textDecoration: "line-through" }
-                              : { textDecoration: "none" }
-                          }
-                          draggable
-                          onDragStart={(e) => {
-                            dragstarted(e, item._id);
-                            setfrom(e.target.getAttribute("data-attri"));
-                          }}
-                          className="p-4 border border-red-500 flex flex-row justify-between"
-                          key={index}
-                        >
-                          <h2>{item.message}</h2>
-                          <div className="flex flex-row gap-2 items-center justify-center">
-                            <button onClick={(e) => deleteitem(item._id)}>
-                              Delete
+
+          <div className="mt-8 space-y-4">
+            {progress.map((item) => {
+              if (item.progress === "todo") {
+                return (
+                  <div
+                    key={item._id}
+                    draggable
+                    onDragStart={(e) => {
+                      dragstarted(e, item._id);
+                      setfrom("todo");
+                    }}
+                    className={`p-4 border border-gray-400 rounded ${
+                      item.check ? "line-through" : ""
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      {Id === item._id ? (
+                        <input
+                          type="text"
+                          value={editText}
+                          onChange={handleEditChange}
+                        />
+                      ) : (
+                        <h2 className="text-xl text-white">
+                          {item.message}
+                        </h2>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        {Id === item._id ? (
+                          <button
+                            onClick={saveEditedItem}
+                            className="text-blue-500 hover:text-blue-600"
+                          >
+                            <FontAwesomeIcon icon={faSave} />
+                          </button>
+                        ) : (
+                          <>
+                            
+                            <button
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => deleteitem(item._id)}
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
                             </button>
-                            <input
-                              type="checkbox"
-                              checked={item.check}
-                              onChange={(e) => {
-                                updateStrike(e, item._id);
-                                const itemIndex = progress.findIndex(
-                                  (pro) => pro._id === item._id
-                                );
-                                progress[itemIndex].check =
-                                  !progress[itemIndex].check;
-                                setprogress([...progress]);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null; // Render nothing if progress.progress is not "todo"
-                  })
-                : ""}
-            </div>
-          </div>
-          <div
-            data-droppable
-            onDragOver={(e) => dragginover(e)}
-            onDrop={(e) => {
-              setto("doing");
-              dragdropped(e);
-            }}
-            className="h-auto flex-1 border border-black"
-          >
-            <h1 className="text-3xl flex justify-center pt-3">Ongoing</h1>
-            <div className="h-auto w-full flex flex-col gap-4 px-4 py-6">
-              {progress
-                ? progress.map((item, index) => {
-                    if (item.progress === "doing") {
-                      return (
-                        <div
-                          data-attri="doing"
-                          style={
-                            item.check
-                              ? { textDecoration: "line-through" }
-                              : { textDecoration: "none" }
-                          }
-                          draggable
-                          onDragStart={(e) => {
-                            dragstarted(e, item._id);
-                            setfrom(e.target.getAttribute("data-attri"));
-                          }}
-                          className="p-4 border border-red-500 flex flex-row justify-between"
-                          key={index}
-                        >
-                          <h2 className="flex flex-row gap-2 items-center justify-center">
-                            {item.message}
-                          </h2>{" "}
-                          <div>
-                          <button onClick={(e) => deleteitem(item._id)}>
-                            Delete
-                          </button>{" "}
-                          <input
-                            type="checkbox"
-                            checked={item.check}
-                            onChange={(e) => {
-                              updateStrike(e, item._id);
-                              const itemIndex = progress.findIndex(
-                                (pro) => pro._id === item._id
-                              );
-                              progress[itemIndex].check =
-                                !progress[itemIndex].check;
-                              setprogress([...progress]);
-                            }}
-                          />
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null; // Render nothing if progress.progress is not "doning"
-                  })
-                : ""}
-            </div>
-          </div>
-          <div
-            data-droppable
-            onDragOver={(e) => dragginover(e)}
-            onDrop={(e) => {
-              setto("done");
-              dragdropped(e);
-            }}
-            className="h-auto flex-1 border border-black"
-          >
-            <h1 className="text-3xl flex justify-center pt-3">Completed</h1>
-            <div className="h-auto w-full flex flex-col gap-4 px-4 py-6">
-              {progress
-                ? progress.map((item, index) => {
-                    if (item.progress === "done") {
-                      return (
-                        <div
-                          data-attri="done"
-                          style={
-                            item.check
-                              ? { textDecoration: "line-through" }
-                              : { textDecoration: "none" }
-                          }
-                          draggable
-                          onDragStart={(e) => {
-                            dragstarted(e, item._id);
-                            setfrom(e.target.getAttribute("data-attri"));
-                          }}
-                          className="p-4 border border-red-500 flex flex-row justify-between"
-                          key={index}
-                        >
-                          <h2 className="flex flex-row gap-2 items-center justify-center">
-                            {item.message}
-                          </h2>
-                          <div>
-                            <button onClick={(e) => deleteitem(item._id)}>
-                              Delete
+                            <button
+                              onClick={() => editItem(item._id, item.message)}
+                              className="text-blue-500 hover:text-blue-600"
+                            >
+                              <FontAwesomeIcon icon={faEdit} />
                             </button>
-                            <input
-                              type="checkbox"
-                              checked={item.check}
-                              onChange={(e) => {
-                                updateStrike(e, item._id);
-                                const itemIndex = progress.findIndex(
-                                  (pro) => pro._id === item._id
-                                );
-                                progress[itemIndex].check =
-                                  !progress[itemIndex].check;
-                                setprogress([...progress]);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null; // Render nothing if progress.progress is not "done"
-                  })
-                : ""}
-            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })}
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
